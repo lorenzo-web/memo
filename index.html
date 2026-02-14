@@ -202,11 +202,6 @@
             height: 100%;
             object-fit: contain;
             padding: 12px;
-            transition: opacity 0.3s ease;
-        }
-
-        .card-front img.loading {
-            opacity: 0;
         }
 
         .card-number {
@@ -826,31 +821,36 @@
             }, 650);
 
             setTimeout(() => {
-                setCardContent(id, work);
-                loader.classList.remove('visible');
-                card.classList.remove('fade-out');
+                setCardContent(id, work, () => {
+                    loader.classList.remove('visible');
+                    card.classList.remove('fade-out');
+                });
             }, 1050);
         } else {
             // First load or already front-facing
             card.classList.add('fade-out');
             loader.classList.add('visible');
             setTimeout(() => {
-                setCardContent(id, work);
-                loader.classList.remove('visible');
-                card.classList.remove('fade-out');
+                setCardContent(id, work, () => {
+                    loader.classList.remove('visible');
+                    card.classList.remove('fade-out');
+                });
             }, 350);
         }
     }
 
-    function setCardContent(id, work) {
+    function setCardContent(id, work, onReady) {
         const img = document.getElementById('cardImage');
 
-        // Preload image to avoid flash of empty
-        img.classList.add('loading');
+        // Preload image, then swap and call back
         const preload = new Image();
         preload.onload = () => {
             img.src = preload.src;
-            img.classList.remove('loading');
+            if (onReady) onReady();
+        };
+        preload.onerror = () => {
+            img.src = getImagePath(id);
+            if (onReady) onReady();
         };
         preload.src = getImagePath(id);
 
