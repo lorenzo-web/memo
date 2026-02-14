@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Esercizi di Riconoscimento — Memo</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap');
+
+        :root {
+            --bg: #f5f0eb;
+            --card-bg: #ffffff;
+            --text: #1a1a1a;
+            --text-light: #6b6b6b;
+            --accent: #2c2c2c;
+            --green: #4a7c59;
+            --green-hover: #3d6a4b;
+            --red: #a34444;
+            --red-hover: #8b3636;
+            --shadow: 0 2px 20px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            width: 100%;
+            padding: 1.5rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 300;
+            font-size: 1.4rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .progress-bar {
+            width: 100%;
+            max-width: 400px;
+            height: 2px;
+            background: rgba(0,0,0,0.06);
+            margin: 0.75rem auto 0;
+            border-radius: 1px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            margin-top: 0.4rem;
+            letter-spacing: 0.08em;
+        }
+
+        .score-bar {
+            display: flex;
+            justify-content: center;
+            gap: 2.5rem;
+            margin-top: 0.5rem;
+            font-size: 1.3rem;
+            letter-spacing: 0.05em;
+        }
+
+        .score-correct {
+            color: var(--green);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .score-wrong {
+            color: var(--red);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        /* Main Container */
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* Card */
+        .card-wrapper {
+            perspective: 1200px;
+            width: 100%;
+            max-width: 480px;
+            aspect-ratio: 3/4;
+            max-height: 65vh;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .card-wrapper .mini-loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(0,0,0,0.08);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .card-wrapper .mini-loader.visible {
+            opacity: 1;
+        }
+
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.7s cubic-bezier(0.4, 0.0, 0.2, 1),
+                        opacity 0.35s ease;
+            opacity: 1;
+        }
+
+        .card.fade-out {
+            opacity: 0;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Front */
+        .card-front {
+            background: var(--card-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-front img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 12px;
+            transition: opacity 0.3s ease;
+        }
+
+        .card-front img.loading {
+            opacity: 0;
+        }
+
+        .card-number {
+            position: absolute;
+            bottom: 12px;
+            right: 16px;
+            font-size: 0.65rem;
+            color: var(--text-light);
+            letter-spacing: 0.1em;
+            font-weight: 500;
+        }
+
+        .tap-hint {
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 0.65rem;
+            color: var(--text-light);
+            letter-spacing: 0.08em;
+            opacity: 0.6;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Back */
+        .card-back {
+            background: var(--card-bg);
+            transform: rotateY(180deg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem 2rem;
+            text-align: center;
+        }
+
+        .card-back .label {
+            font-size: 0.6rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-back .artist {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.6rem;
+            font-weight: 600;
+            line-height: 1.3;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .card-back .title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.2rem;
+            font-weight: 300;
+            font-style: italic;
+            color: var(--text-light);
+            margin-bottom: 0.3rem;
+        }
+
+        .card-back .date {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            letter-spacing: 0.05em;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 2.5rem;
+        }
+
+        .btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 2px solid;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s ease;
+            font-size: 1.4rem;
+        }
+
+        .btn-wrong {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .btn-wrong:hover, .btn-wrong:active {
+            background: var(--red);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .btn-correct {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .btn-correct:hover, .btn-correct:active {
+            background: var(--green);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* Start Screen */
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 70vh;
+            padding: 2rem;
+            width: 100%;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .screen-start h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 300;
+            font-size: 2.2rem;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .screen-start p {
+            color: var(--text-light);
+            font-size: 0.85rem;
+            max-width: 320px;
+            line-height: 1.7;
+            margin-bottom: 2rem;
+        }
+
+        .btn-start {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            padding: 0.9rem 2.5rem;
+            border: 1px solid var(--accent);
+            background: transparent;
+            color: var(--accent);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-start:hover {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        /* Quiz Screen */
+        .screen-quiz {
+            min-height: auto;
+            padding: 0;
+        }
+
+        /* Stats Screen */
+        .screen-stats h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 300;
+            font-size: 2rem;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.3rem;
+        }
+
+        .screen-stats .subtitle {
+            color: var(--text-light);
+            font-size: 0.8rem;
+            margin-bottom: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            width: 100%;
+            max-width: 360px;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.2rem;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.2rem;
+            font-weight: 600;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-light);
+            margin-top: 0.2rem;
+        }
+
+        .stat-correct .stat-value { color: var(--green); }
+        .stat-wrong .stat-value { color: var(--red); }
+
+        /* Wrong list */
+        .wrong-list {
+            width: 100%;
+            max-width: 480px;
+            margin-top: 1.5rem;
+        }
+
+        .wrong-list h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 400;
+            font-size: 1.1rem;
+            margin-bottom: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .wrong-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+
+        .wrong-item-num {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            min-width: 28px;
+            text-align: right;
+        }
+
+        .wrong-item-thumb {
+            width: 48px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .wrong-item-info {
+            flex: 1;
+            text-align: left;
+        }
+
+        .wrong-item-artist {
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .wrong-item-title {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        .wrong-item-attempts {
+            font-size: 0.65rem;
+            color: var(--red);
+            letter-spacing: 0.05em;
+        }
+
+        /* Retry message */
+        .retry-banner {
+            background: rgba(163, 68, 68, 0.08);
+            border: 1px solid rgba(163, 68, 68, 0.15);
+            border-radius: 6px;
+            padding: 0.8rem 1.2rem;
+            margin-bottom: 1rem;
+            font-size: 0.75rem;
+            color: var(--red);
+            letter-spacing: 0.03em;
+            display: none;
+            text-align: center;
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .retry-banner.visible {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .header h1 { font-size: 1.1rem; }
+            .card-wrapper { max-height: 55vh; }
+            .card-back .artist { font-size: 1.3rem; }
+            .card-back .title { font-size: 1rem; }
+            .card-back { padding: 2rem 1.5rem; }
+            .btn { width: 50px; height: 50px; font-size: 1.2rem; }
+        }
+
+        /* Swipe hint animation */
+        .swipe-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.7rem;
+            color: var(--text-light);
+            opacity: 0.5;
+        }
+
+        .swipe-indicator svg {
+            width: 16px;
+            height: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>Esercizi di Riconoscimento</h1>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText"></div>
+    </div>
+
+    <div class="container">
+
+        <!-- Start Screen -->
+        <div class="screen screen-start active" id="screenStart">
+            <h2>Memo</h2>
+            <p>120 opere da riconoscere. Osserva l'immagine, pensa all'artista e al titolo, poi gira la carta per verificare.</p>
+            <button class="btn-start" onclick="startQuiz()">Inizia</button>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div class="screen screen-quiz" id="screenQuiz">
+            <div class="retry-banner" id="retryBanner"></div>
+
+            <div class="card-wrapper" id="cardWrapper" onclick="flipCard()">
+                <div class="mini-loader" id="miniLoader"></div>
+                <div class="card" id="card">
+                    <div class="card-face card-front">
+                        <img id="cardImage" src="" alt="Opera">
+                        <span class="card-number" id="cardNumber"></span>
+                        <span class="tap-hint" id="tapHint">tocca per girare</span>
+                    </div>
+                    <div class="card-face card-back">
+                        <div class="label">Risposta</div>
+                        <div class="artist" id="cardArtist"></div>
+                        <div class="title" id="cardTitle"></div>
+                        <div class="date" id="cardDate"></div>
+                        <div class="buttons">
+                            <button class="btn btn-wrong" onclick="event.stopPropagation(); answer(false)" title="Non ho indovinato">✕</button>
+                            <button class="btn btn-correct" onclick="event.stopPropagation(); answer(true)" title="Ho indovinato">✓</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="score-bar" id="scoreBar">
+                <span class="score-correct">✓ <span id="liveCorrect">0</span></span>
+                <span class="score-wrong">✕ <span id="liveWrong">0</span></span>
+            </div>
+        </div>
+
+        <!-- Stats Screen -->
+        <div class="screen screen-stats" id="screenStats">
+            <h2>Risultati</h2>
+            <div class="subtitle" id="statsSubtitle"></div>
+
+            <div class="stats-grid">
+                <div class="stat-card stat-correct">
+                    <div class="stat-value" id="statCorrect">0</div>
+                    <div class="stat-label">Corrette</div>
+                </div>
+                <div class="stat-card stat-wrong">
+                    <div class="stat-value" id="statWrong">0</div>
+                    <div class="stat-label">Sbagliate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statPercent">0%</div>
+                    <div class="stat-label">Precisione</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">Totali</div>
+                </div>
+            </div>
+
+            <div class="wrong-list" id="wrongList"></div>
+
+            <button class="btn-start" id="btnNextRound" onclick="startNextRound()" style="margin-top: 2rem; display: none;"></button>
+            <button class="btn-start" id="btnRestart" onclick="startQuiz()" style="margin-top: 1rem;">Ricomincia da capo</button>
+        </div>
+    </div>
+
+    <script>
+    // ── Data ──────────────────────────────────────────────
+    const works = [
+        { id: 0, artist: "Polì", title: "Porcio su tela", date: "2026" },
+        { id: 1, artist: "Robert Rauschenberg", title: "Erased De Kooning Drawing", date: "1953" },
+        { id: 2, artist: "Mario Schifano", title: "Senza titolo", date: "1960" },
+        { id: 3, artist: "Kasimir Malevič", title: "Quadrato bianco su fondo bianco", date: "1918" },
+        { id: 4, artist: "Robert Rauschenberg", title: "White Painting", date: "1952-53" },
+        { id: 5, artist: "Yves Klein", title: "Mostra alla Galleria Apollinaire", date: "Milano, 1957" },
+        { id: 6, artist: "Lucio Fontana", title: "Concetto spaziale – Attesa", date: "1964" },
+        { id: 7, artist: "Piet Mondrian", title: "Grande composizione", date: "1920" },
+        { id: 8, artist: "Mark Rothko", title: "Rosso bianco e nero", date: "1957" },
+        { id: 9, artist: "Piero Manzoni", title: "Base del mondo", date: "1961" },
+        { id: 10, artist: "Robert Morris / Sol LeWitt", title: "Sculture e Wall Drawings", date: "Anni 60" },
+        { id: 11, artist: "Giulio Paolini", title: "Disegno geometrico", date: "1960" },
+        { id: 12, artist: "Anish Kapoor", title: "The Dark Brother", date: "2005" },
+        { id: 13, artist: "Felix Gonzalez-Torres", title: "Placebo", date: "1991" },
+        { id: 14, artist: "Xu Bing", title: "Book from the Sky", date: "1989" },
+        { id: 15, artist: "Tom Friedman", title: "1000 ore di guardare fisso", date: "1992-97" },
+        { id: 16, artist: "Ai Weiwei", title: "Sunflower Seeds", date: "2006" },
+        { id: 17, artist: "Giorgio de Chirico", title: "Le Muse inquietanti", date: "1918" },
+        { id: 18, artist: "Niki de Saint Phalle", title: "Hon (Lei)", date: "Stoccolma, 1966" },
+        { id: 19, artist: "Yves Klein", title: "Antropometrie 74", date: "1960" },
+        { id: 20, artist: "Allen Jones", title: "Attaccapanni, tavolino, sedia", date: "1969" },
+        { id: 21, artist: "Tom Wesselman", title: "Grande nudo americano", date: "Anni 60" },
+        { id: 22, artist: "James Rosenquist", title: "I Love You with My Ford", date: "1961" },
+        { id: 23, artist: "Hannah Höch", title: "Collage", date: "1920" },
+        { id: 24, artist: "Shigeko Kubota", title: "Vagina Painting", date: "New York, 4 luglio 1965" },
+        { id: 25, artist: "Pablo Picasso", title: "Les Demoiselles d'Avignon", date: "1907" },
+        { id: 26, artist: "Valie Export", title: "Genital Panic", date: "1969" },
+        { id: 27, artist: "Rebecca Horn", title: "Unicorn", date: "1971" },
+        { id: 28, artist: "Marina Abramović e Ulay", title: "Performance", date: "Bologna, 1977" },
+        { id: 29, artist: "Michelangelo Pistoletto", title: "Venere degli stracci", date: "1969-70" },
+        { id: 30, artist: "Duane Hanson", title: "Donna con carrello", date: "1969" },
+        { id: 31, artist: "Gerhard Richter", title: "Emma su una scala", date: "1966" },
+        { id: 32, artist: "Bill Viola", title: "The Greeting", date: "1995" },
+        { id: 33, artist: "Otto Dix", title: "Donna su una pelle di leopardo", date: "1927" },
+        { id: 34, artist: "Jasper Johns", title: "Three Flags", date: "1958" },
+        { id: 35, artist: "Francis Bacon", title: "Painting", date: "1946" },
+        { id: 36, artist: "Jackson Pollock", title: "Al lavoro", date: "Anni Cinquanta" },
+        { id: 37, artist: "Domenico Gnoli", title: "Grande riga", date: "1968" },
+        { id: 38, artist: "Alighiero Boetti", title: "Io che prendo il sole a Torino il 19 gennaio 1969", date: "1969" },
+        { id: 39, artist: "Gilbert & George", title: "Singing Sculpture", date: "1970" },
+        { id: 40, artist: "Luigi Ontani", title: "Girasolo", date: "1988" },
+        { id: 41, artist: "Chuck Close", title: "Richard", date: "1969" },
+        { id: 42, artist: "Adrian Tranquilli", title: "Yoda, the Day After", date: "1999" },
+        { id: 43, artist: "Georg Baselitz", title: "Mangiatore di arance", date: "1981" },
+        { id: 44, artist: "Man Ray", title: "Cadeau", date: "1920" },
+        { id: 45, artist: "Hugo Ball", title: "Al Cabaret Voltaire", date: "1917" },
+        { id: 46, artist: "Takashi Murakami", title: "My Lonesome Cowboy", date: "1998" },
+        { id: 47, artist: "Stelarc", title: "Event for Lateral Suspension", date: "1978" },
+        { id: 48, artist: "Tom Friedman", title: "Untitled", date: "1999" },
+        { id: 49, artist: "Martin Kippenberger", title: "Martin, vai nell'angolo e vergognati", date: "Anni Novanta" },
+        { id: 50, artist: "Maurizio Cattelan", title: "A Perfect Day", date: "1999" },
+        { id: 51, artist: "Jean-Michel Basquiat", title: "Dos Cabezas", date: "1982" },
+        { id: 52, artist: "John De Andrea", title: "Arden Anderson e Nora Murphy", date: "1972" },
+        { id: 53, artist: "Jeff Koons", title: "Made in Heaven", date: "1990" },
+        { id: 54, artist: "Sarah Lucas", title: "Au Naturel", date: "1996" },
+        { id: 55, artist: "Louise Bourgeois", title: "Maman", date: "1999" },
+        { id: 56, artist: "Katharina Fritsch", title: "Il re dei ratti", date: "1993" },
+        { id: 57, artist: "Damien Hirst", title: "L'impossibilità fisica della morte nella mente di qualcuno che vive", date: "1991" },
+        { id: 58, artist: "Andrea Pazienza", title: "Vita di merda", date: "Anni Ottanta" },
+        { id: 59, artist: "Pablo Picasso", title: "Il toro", date: "1940" },
+        { id: 60, artist: "Mimmo Paladino", title: "Scenografia per La Sposa di Messina", date: "1990" },
+        { id: 61, artist: "Jannis Kounellis", title: "Senza titolo", date: "1969" },
+        { id: 62, artist: "Joseph Beuys", title: "I Like America and America Likes Me", date: "New York, 1974" },
+        { id: 63, artist: "Pino Pascali", title: "Baco da setola", date: "1968" },
+        { id: 64, artist: "Robert Rauschenberg", title: "Monogram", date: "1955-59" },
+        { id: 65, artist: "Jean Dubuffet", title: "Mucca", date: "Anni 40" },
+        { id: 66, artist: "Atelier Van Lieshout", title: "Wonderland", date: "2001" },
+        { id: 67, artist: "Joseph Beuys", title: "Slitta", date: "1969" },
+        { id: 68, artist: "Keith Haring", title: "New York", date: "Anni Ottanta" },
+        { id: 69, artist: "Gino De Dominicis", title: "Seconda soluzione d'immortalità (L'universo è immobile)", date: "Venezia, 1972" },
+        { id: 70, artist: "Xu Bing", title: "A Case Study of Transference", date: "1994" },
+        { id: 71, artist: "Hermann Nitsch", title: "Orgies-Mysteryes Theatre", date: "Vienna, Anni 80" },
+        { id: 72, artist: "Richard Long", title: "Scotline", date: "Anni Settanta" },
+        { id: 73, artist: "Cai Guo-Qiang", title: "Project to Extend the Great Wall of China", date: "1993" },
+        { id: 74, artist: "Walter De Maria", title: "The Lightning Field", date: "New Mexico, 1973-79" },
+        { id: 75, artist: "Ben Vautier", title: "Dio buttato a mare", date: "Nizza, 1962" },
+        { id: 76, artist: "Andy Warhol", title: "Silver Clouds", date: "Leo Castelli Gallery, New York, 1966" },
+        { id: 77, artist: "Frank Stella", title: "Mostra personale alla Leo Castelli Gallery", date: "New York, 1964" },
+        { id: 78, artist: "Daniel Spoerri", title: "Sala nella mostra Dylaby", date: "Amsterdam, 1962" },
+        { id: 79, artist: "Christo", title: "Il Pont-Neuf a Parigi impacchettato", date: "1975" },
+        { id: 80, artist: "Niki de Saint Phalle", title: "Altare", date: "Milano, 1970" },
+        { id: 81, artist: "César", title: "Compressione", date: "1961" },
+        { id: 82, artist: "Ron Mueck", title: "Dead Dad", date: "1996-97" },
+        { id: 83, artist: "Lucian Freud", title: "Autoritratto", date: "1985" },
+        { id: 84, artist: "Jasper Johns", title: "Painted Bronze II, Ale Cans", date: "1964" },
+        { id: 85, artist: "Jean Tinguely", title: "Baluba", date: "1961" },
+        { id: 86, artist: "Claes Oldenburg", title: "Fornello", date: "1962" },
+        { id: 87, artist: "Marcel Duchamp", title: "Orinatoio (Fontana)", date: "1917" },
+        { id: 88, artist: "Jannis Kounellis", title: "Margherita di fuoco", date: "1967" },
+        { id: 89, artist: "Giuseppe Penone", title: "Continuerà a crescere tranne che in quel punto", date: "1968" },
+        { id: 90, artist: "Giovanni Anselmo", title: "Senza titolo", date: "1968" },
+        { id: 91, artist: "Do Ho Suh", title: "Who Am We", date: "Venezia, 2001" },
+        { id: 92, artist: "Maurizio Cattelan", title: "Senza titolo", date: "2001" },
+        { id: 93, artist: "Mike e Doug Starn", title: "Big Bambù", date: "2012" },
+        { id: 94, artist: "Claes Oldenburg", title: "The Store", date: "1961" },
+        { id: 95, artist: "Kurt Schwitters", title: "Merzbau", date: "1919-33" },
+        { id: 96, artist: "Lucio Fontana", title: "Ambiente spaziale a luce nera", date: "1949" },
+        { id: 97, artist: "Anselm Kiefer", title: "Pasiphae", date: "1988" },
+        { id: 98, artist: "Moebius", title: "Una tavola del Garage ermetico di Jerry Cornelius", date: "1976" },
+        { id: 99, artist: "Francesco Clemente", title: "Priapea", date: "1980" },
+        { id: 100, artist: "Mimmo Paladino", title: "Senza titolo", date: "1982" },
+        { id: 101, artist: "Ralph Goings", title: "Waitress – Unadilla Diner", date: "1984" },
+        { id: 102, artist: "Alighiero Boetti", title: "Tutto", date: "1988" },
+        { id: 103, artist: "Jenny Saville", title: "Spegely", date: "2002-2003" },
+        { id: 104, artist: "Mostra Prospect", title: "Düsseldorf", date: "1968" },
+        { id: 105, artist: "Joseph Kosuth", title: "Una e tre sedie", date: "1965-67" },
+        { id: 106, artist: "Bruce Nauman", title: "The True Artist Helps the World by Revealing Mystic Truths", date: "1967" },
+        { id: 107, artist: "Vasilij Kandinskij", title: "Composizione", date: "1913" },
+        { id: 108, artist: "Willem de Kooning", title: "Donna", date: "1950-52" },
+        { id: 109, artist: "Shiraga Kazuo", title: "Dipingere con i piedi", date: "1956" },
+        { id: 110, artist: "Andy Warhol", title: "Coca Cola", date: "Anni 60" },
+        { id: 111, artist: "Bridget Riley", title: "Current", date: "1964" },
+        { id: 112, artist: "Alberto Burri", title: "Bianco plastica", date: "1963" },
+        { id: 113, artist: "Fernandez Arman", title: "Pattumiera I", date: "1960" },
+        { id: 114, artist: "Andy Warhol", title: "Banconota", date: "1962" },
+        { id: 115, artist: "Mario Ceroli", title: "Uomo", date: "1964" },
+        { id: 116, artist: "Franz Kline", title: "Cifra 8", date: "1952" },
+        { id: 117, artist: "Pablo Picasso", title: "Guernica", date: "1937, Parigi, Padiglione Spagnolo Esposizione Universale" },
+        { id: 118, artist: "Mario Merz", title: "Onda d'urto", date: "1987" },
+        { id: 119, artist: "Robert Smithson", title: "Spiral Jetty", date: "Grande Lago Salato, Utah, 1970" },
+        { id: 120, artist: "Lucio Fontana", title: "Concetto Spaziale – La fine di Dio", date: "1963" }
+    ];
+
+    // ── State ─────────────────────────────────────────────
+    let queue = [];           // current queue of work ids
+    let currentIndex = 0;
+    let isFlipped = false;
+    let results = {};         // { id: { correct: n, wrong: n } }
+    let wrongThisRound = [];  // ids wrong in current round
+    let round = 1;
+    let totalAnswered = 0;
+    let totalCards = 0;
+    let liveCorrect = 0;
+    let liveWrong = 0;
+
+    // ── Utils ─────────────────────────────────────────────
+    function shuffle(arr) {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+    }
+
+    function getImagePath(id) {
+        return `images/Esercizi riconoscimento pdf_page-${String(id).padStart(4, '0')}.jpg`;
+    }
+
+    function getWork(id) {
+        return works.find(w => w.id === id);
+    }
+
+    // ── Screens ───────────────────────────────────────────
+    function showScreen(name) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('screen' + name).classList.add('active');
+    }
+
+    // ── Quiz Logic ────────────────────────────────────────
+    function startQuiz() {
+        results = {};
+        works.forEach(w => results[w.id] = { correct: 0, wrong: 0 });
+        queue = shuffle(works.map(w => w.id));
+        currentIndex = 0;
+        wrongThisRound = [];
+        round = 1;
+        totalAnswered = 0;
+        totalCards = queue.length;
+        liveCorrect = 0;
+        liveWrong = 0;
+        document.getElementById('liveCorrect').textContent = '0';
+        document.getElementById('liveWrong').textContent = '0';
+        showScreen('Quiz');
+        updateProgress();
+        loadCard();
+        document.getElementById('retryBanner').classList.remove('visible');
+    }
+
+    function loadCard() {
+        if (currentIndex >= queue.length) {
+            // Round finished
+            if (wrongThisRound.length > 0) {
+                // Show intermediate stats with option to continue
+                showStats(false);
+            } else {
+                // All done, show final stats
+                showStats(true);
+            }
+            return;
+        }
+
+        const id = queue[currentIndex];
+        const work = getWork(id);
+        const card = document.getElementById('card');
+
+        const loader = document.getElementById('miniLoader');
+
+        if (card.classList.contains('flipped')) {
+            // Keep the answer visible while the card flips back
+            isFlipped = false;
+            card.classList.remove('flipped');
+
+            // After flip-back animation completes, fade out and load new content
+            setTimeout(() => {
+                card.classList.add('fade-out');
+                loader.classList.add('visible');
+            }, 650);
+
+            setTimeout(() => {
+                setCardContent(id, work);
+                loader.classList.remove('visible');
+                card.classList.remove('fade-out');
+            }, 1050);
+        } else {
+            // First load or already front-facing
+            card.classList.add('fade-out');
+            loader.classList.add('visible');
+            setTimeout(() => {
+                setCardContent(id, work);
+                loader.classList.remove('visible');
+                card.classList.remove('fade-out');
+            }, 350);
+        }
+    }
+
+    function setCardContent(id, work) {
+        const img = document.getElementById('cardImage');
+
+        // Preload image to avoid flash of empty
+        img.classList.add('loading');
+        const preload = new Image();
+        preload.onload = () => {
+            img.src = preload.src;
+            img.classList.remove('loading');
+        };
+        preload.src = getImagePath(id);
+
+        document.getElementById('cardNumber').textContent = `N° ${id}`;
+
+        // Back
+        document.getElementById('cardArtist').textContent = work.artist;
+        document.getElementById('cardTitle').textContent = work.title;
+        document.getElementById('cardDate').textContent = work.date;
+
+        // Hint
+        document.getElementById('tapHint').style.display = '';
+    }
+
+    function flipCard() {
+        if (isFlipped) return;
+        isFlipped = true;
+        document.getElementById('card').classList.add('flipped');
+        document.getElementById('tapHint').style.display = 'none';
+    }
+
+    function answer(correct) {
+        const id = queue[currentIndex];
+        if (correct) {
+            results[id].correct++;
+            liveCorrect++;
+            document.getElementById('liveCorrect').textContent = liveCorrect;
+        } else {
+            results[id].wrong++;
+            wrongThisRound.push(id);
+            liveWrong++;
+            document.getElementById('liveWrong').textContent = liveWrong;
+        }
+        totalAnswered++;
+        currentIndex++;
+        updateProgress();
+
+        // Small delay for visual feedback
+        setTimeout(() => loadCard(), 300);
+    }
+
+    function updateProgress() {
+        const pct = totalCards > 0 ? (totalAnswered / totalCards * 100) : 0;
+        document.getElementById('progressFill').style.width = pct + '%';
+        const remaining = queue.length - currentIndex;
+        const wrongPending = wrongThisRound.length;
+        let text = `${totalAnswered} / ${totalCards}`;
+        if (round > 1) text += ` — round ${round}`;
+        document.getElementById('progressText').textContent = text;
+    }
+
+    // ── Next round ────────────────────────────────────
+    function startNextRound() {
+        round++;
+        queue = shuffle(wrongThisRound);
+        wrongThisRound = [];
+        currentIndex = 0;
+        totalAnswered = 0;
+        totalCards = queue.length;
+        liveCorrect = 0;
+        liveWrong = 0;
+        document.getElementById('liveCorrect').textContent = '0';
+        document.getElementById('liveWrong').textContent = '0';
+        const banner = document.getElementById('retryBanner');
+        banner.textContent = `Round ${round} — ${queue.length} ${queue.length === 1 ? 'opera da' : 'opere da'} rivedere`;
+        banner.classList.add('visible');
+        showScreen('Quiz');
+        updateProgress();
+        loadCard();
+    }
+
+    // ── Stats ─────────────────────────────────────────────
+    function showStats(isFinal) {
+        // Show only stats for the current round
+        document.getElementById('statCorrect').textContent = liveCorrect;
+        document.getElementById('statWrong').textContent = liveWrong;
+        document.getElementById('statTotal').textContent = liveCorrect + liveWrong;
+        const pct = liveCorrect + liveWrong > 0 
+            ? Math.round(liveCorrect / (liveCorrect + liveWrong) * 100) 
+            : 0;
+        document.getElementById('statPercent').textContent = pct + '%';
+
+        const btnNext = document.getElementById('btnNextRound');
+        const btnRestart = document.getElementById('btnRestart');
+
+        if (isFinal) {
+            document.getElementById('statsSubtitle').textContent = 
+                `${round} ${round === 1 ? 'round completato' : 'round completati'}`;
+            btnNext.style.display = 'none';
+            btnRestart.textContent = 'Ricomincia';
+        } else {
+            const wrongCount = wrongThisRound.length;
+            document.getElementById('statsSubtitle').textContent = 
+                `Round ${round} completato`;
+            btnNext.textContent = `${wrongCount} ${wrongCount === 1 ? 'opera da rivedere' : 'opere da rivedere'}`;
+            btnNext.style.display = '';
+            btnRestart.textContent = 'Ricomincia da capo';
+        }
+
+        // Show only the works wrong in this round
+        const wrongItems = wrongThisRound.map(id => {
+            const w = getWork(id);
+            return { ...w, ...results[id] };
+        });
+        wrongItems.sort((a, b) => b.wrong - a.wrong);
+        const listEl = document.getElementById('wrongList');
+        
+        if (wrongItems.length > 0) {
+            let html = '<h3>Opere sbagliate</h3>';
+            wrongItems.forEach(item => {
+                html += `
+                <div class="wrong-item">
+                    <span class="wrong-item-num">${item.id}</span>
+                    <img class="wrong-item-thumb" src="${getImagePath(item.id)}" alt="">
+                    <div class="wrong-item-info">
+                        <div class="wrong-item-artist">${item.artist}</div>
+                        <div class="wrong-item-title">${item.title}, ${item.date}</div>
+                    </div>
+                    <span class="wrong-item-attempts">×${item.wrong}</span>
+                </div>`;
+            });
+            listEl.innerHTML = html;
+        } else {
+            listEl.innerHTML = '<h3 style="color:var(--green)">Tutte le opere indovinate al primo colpo!</h3>';
+        }
+
+        document.getElementById('progressFill').style.width = '100%';
+        document.getElementById('progressText').textContent = isFinal ? 'Completato' : `Round ${round} completato`;
+        showScreen('Stats');
+    }
+
+    // ── Touch / Swipe support ─────────────────────────────
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    document.addEventListener('touchstart', e => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        // Swipe up or left to flip
+        if (!isFlipped && (dy < -60 || Math.abs(dx) > 80)) {
+            const wrapper = document.getElementById('cardWrapper');
+            const rect = wrapper.getBoundingClientRect();
+            const touchY = e.changedTouches[0].clientY;
+            if (touchY >= rect.top && touchY <= rect.bottom) {
+                flipCard();
+            }
+        }
+    }, { passive: true });
+
+    // ── Keyboard support ──────────────────────────────────
+    document.addEventListener('keydown', e => {
+        if (e.key === ' ' || e.key === 'Enter') {
+            if (!isFlipped) {
+                e.preventDefault();
+                flipCard();
+            }
+        }
+        if (isFlipped) {
+            if (e.key === 'ArrowRight' || e.key === 'g') {
+                e.preventDefault();
+                answer(true);
+            }
+            if (e.key === 'ArrowLeft' || e.key === 'r') {
+                e.preventDefault();
+                answer(false);
+            }
+        }
+    });
+    </script>
+</body>
+</html>
